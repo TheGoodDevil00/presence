@@ -118,8 +118,7 @@ export function OnboardingClient({ initialStep, initialDisplayName }: Onboarding
             .limit(1);
 
           if (invites && invites.length > 0) {
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-            setInviteUrl(`${appUrl}/invite/${invites[0].token}`);
+            setInviteUrl(`${window.location.origin}/invite/${invites[0].token}`);
           } else {
             const res = await fetch("/api/invite/create", { method: "POST" });
             if (res.ok) {

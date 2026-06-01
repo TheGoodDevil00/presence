@@ -13,6 +13,7 @@ export function OnboardingClient({ initialStep, initialDisplayName }: Onboarding
   const [step, setStep] = useState<1 | 2>(initialStep);
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -66,6 +67,26 @@ export function OnboardingClient({ initialStep, initialDisplayName }: Onboarding
 
     return () => clearInterval(intervalId);
   }, [step, router, supabase]);
+
+  // Handle resetting invite link
+  const handleRefreshLink = async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      // Clear existing pairs and invites
+      await fetch("/api/reset", { method: "POST" });
+      // Create a fresh invite
+      const res = await fetch("/api/invite/create", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to create invite link");
+      const data = await res.json();
+      setInviteUrl(data.url);
+      setCopied(false);
+    } catch (err: any) {
+      setError(err?.message || "Failed to refresh link.");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Handle display name submit (Step 1)
   const handleStep1Submit = async () => {
@@ -188,6 +209,13 @@ export function OnboardingClient({ initialStep, initialDisplayName }: Onboarding
               className="w-full bg-[#f5f0e8] text-[#0a0a0a] rounded-full py-3 text-sm tracking-widest uppercase hover:bg-opacity-90 active:scale-95 transition-all duration-300 font-medium disabled:opacity-50"
             >
               {copied ? "Copied!" : "Copy link"}
+            </button>
+            <button
+              onClick={handleRefreshLink}
+              disabled={refreshing}
+              className="w-full bg-transparent text-[#4a4a4a] rounded-full py-2 text-xs tracking-widest uppercase hover:text-[#8a8470] active:scale-95 transition-all duration-300 disabled:opacity-40"
+            >
+              {refreshing ? "Clearing..." : "↻ Get new link"}
             </button>
           </div>
           <div className="mt-8 flex flex-col items-center gap-3">

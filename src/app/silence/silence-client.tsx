@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { usePresence } from "@/lib/partykit/usePresence";
 import { PresenceDot } from "@/components/PresenceDot";
 import { AmbientPlayer } from "@/components/AmbientPlayer";
@@ -10,15 +11,26 @@ import { SoundPicker } from "@/components/SoundPicker";
 export function SilenceClient() {
   const presenceState = usePresence();
   const router = useRouter();
+  const supabase = createClient();
 
-  // Route back to invite accept if token was cached during login redirect
-  useEffect(() => {
-    const pendingInvite = sessionStorage.getItem("pending_invite_token");
-    if (pendingInvite) {
-      sessionStorage.removeItem("pending_invite_token");
-      router.push(`/invite/${pendingInvite}`);
+  const [leaving, setLeaving] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+
+  const handleLeave = async () => {
+    if (!confirmLeave) {
+      setConfirmLeave(true);
+      setTimeout(() => setConfirmLeave(false), 3000);
+      return;
     }
-  }, [router]);
+    setLeaving(true);
+    try {
+      await fetch("/api/reset", { method: "POST" });
+      await supabase.auth.signOut();
+      router.push("/auth");
+    } catch {
+      setLeaving(false);
+    }
+  };
 
   const [currentSound, setCurrentSound] = useState<"rain" | "cafe" | "forest" | "off">("off");
   const [volumePercent, setVolumePercent] = useState<number>(60);
@@ -46,6 +58,15 @@ export function SilenceClient() {
 
   return (
     <main className="h-screen w-screen bg-[#0a0a0a] flex flex-col items-center justify-center relative select-none font-serif">
+      {/* Leave button — top right */}
+      <button
+        onClick={handleLeave}
+        disabled={leaving}
+        className="absolute top-5 right-6 text-xs tracking-widest uppercase transition-colors duration-300 disabled:opacity-30"
+        style={{ color: confirmLeave ? "#ffb4ab" : "#2a2a2a" }}
+      >
+        {leaving ? "Leaving..." : confirmLeave ? "Tap again to leave" : "Leave"}
+      </button>
       {/* Presence Dot & Status text */}
       <div className="flex flex-col items-center justify-center mb-16">
         <PresenceDot state={presenceState} />

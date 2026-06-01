@@ -18,10 +18,7 @@ export default function InvitePage() {
 
     const processInvite = async () => {
       try {
-        // 1. Get current session
-        const { data: { session } } = await supabase.auth.getSession();
-
-        // 2. Fetch the invite info
+        // 1. Fetch the invite info (RLS allows this for anonymous users via invites_select_by_token)
         const { data: invite, error: inviteError } = await supabase
           .from("invites")
           .select("*")
@@ -29,12 +26,12 @@ export default function InvitePage() {
           .single();
 
         if (inviteError || !invite) {
-          setError("This invite has expired. Ask for a new one.");
+          setError("This invite link is invalid or has expired.");
           setLoading(false);
           return;
         }
 
-        // 3. Validate invite constraints
+        // 2. Validate invite constraints
         if (invite.accepted_at || invite.accepted_by) {
           setError("This invite has already been used.");
           setLoading(false);
@@ -47,10 +44,13 @@ export default function InvitePage() {
           return;
         }
 
-        // 4. If user is not logged in: store token in sessionStorage and redirect to auth
+        // 3. Check session
+        const { data: { session } } = await supabase.auth.getSession();
+
+        // 4. If user is not logged in: redirect to /auth with the invite path as `next`
         if (!session || !session.user) {
-          sessionStorage.setItem("pending_invite_token", token);
-          router.push("/auth");
+          const invitePath = `/invite/${token}`;
+          router.push(`/auth?next=${encodeURIComponent(invitePath)}`);
           return;
         }
 
@@ -61,12 +61,10 @@ export default function InvitePage() {
           return;
         }
 
-        // 6. Valid user, accept invite
+        // 6. Valid user, accept invite via API
         const res = await fetch("/api/invite/accept", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
         });
 
@@ -75,7 +73,7 @@ export default function InvitePage() {
           throw new Error(data.error || "Failed to accept invite");
         }
 
-        // 7. Success, redirect to /silence
+        // 7. Success → go to shared silence room
         router.push("/silence");
       } catch (err: any) {
         setError(err.message || "Failed to process invite.");

@@ -1,7 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -20,8 +20,8 @@ export async function POST() {
     return NextResponse.json({ error: error?.message || "Failed to create invite" }, { status: 500 });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-  const inviteUrl = `${appUrl}/invite/${invite.token}`;
+  const origin = new URL(request.url).origin;
+  const inviteUrl = `${origin}/invite/${invite.token}`;
 
   return NextResponse.json({ url: inviteUrl });
 }

@@ -5,6 +5,8 @@ import { cookies } from "next/headers";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  // Support a `next` redirect param so invite links survive the login flow
+  const next = searchParams.get("next") ?? "/";
 
   if (code) {
     const cookieStore = cookies();
@@ -37,7 +39,8 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${origin}/`);
+      // Redirect to `next` (e.g. /invite/<token>) or fall back to home
+      return NextResponse.redirect(`${origin}${next}`);
     }
   }
 

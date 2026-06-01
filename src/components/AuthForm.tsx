@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export function AuthForm() {
@@ -9,6 +10,7 @@ export function AuthForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const supabase = createClient();
+  const searchParams = useSearchParams();
 
   const handleSendLink = async () => {
     if (!email) return;
@@ -17,10 +19,14 @@ export function AuthForm() {
     setSuccess(false);
 
     try {
+      // Preserve `next` param (e.g. /invite/<token>) through the email magic link
+      const next = searchParams.get("next") ?? "/";
+      const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: callbackUrl,
         },
       });
 
@@ -50,6 +56,7 @@ export function AuthForm() {
             placeholder="Enter your email"
             className="w-full bg-transparent border border-[#4a4a4a] focus:border-[#f5f0e8] text-[#f5f0e8] rounded-full px-5 py-3 text-center text-sm tracking-wider focus:outline-none transition-colors duration-300 placeholder:text-[#4a4a4a]"
             disabled={loading}
+            onKeyDown={(e) => e.key === "Enter" && handleSendLink()}
           />
           <button
             onClick={handleSendLink}

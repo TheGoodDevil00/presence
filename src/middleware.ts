@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from /auth to /silence (or /onboarding if no profile)
+  // Redirect authenticated users away from /auth to /silence (or /onboarding if no profile/pair)
   if (url.pathname === "/auth" && user) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -33,7 +33,18 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    url.pathname = profile ? "/silence" : "/onboarding";
+    if (!profile) {
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    const { data: pair } = await supabase
+      .from("pairs")
+      .select("id")
+      .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+      .maybeSingle();
+
+    url.pathname = pair ? "/silence" : "/onboarding";
     return NextResponse.redirect(url);
   }
 

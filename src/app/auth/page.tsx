@@ -15,7 +15,18 @@ export default async function AuthPage() {
       .single();
 
     if (profile) {
-      redirect("/silence");
+      // Check if they have a pair
+      const { data: pair } = await supabase
+        .from("pairs")
+        .select("id")
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+        .maybeSingle();
+
+      if (pair) {
+        redirect("/silence");
+      } else {
+        redirect("/onboarding");
+      }
     } else {
       redirect("/onboarding");
     }

@@ -86,12 +86,7 @@ export function AmbientPlayer({ src, volume }: AmbientPlayerProps) {
 
     const fadeOutAndChange = async () => {
       if (ctx && gain) {
-        // Fade out current audio
-        const now = ctx.currentTime;
-        gain.gain.setValueAtTime(gain.gain.value, now);
-        gain.gain.linearRampToValueAtTime(0, now + 0.8);
-        // Wait 800ms for fade out
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        gain.gain.setValueAtTime(0, ctx.currentTime);
       } else {
         audio.pause();
       }

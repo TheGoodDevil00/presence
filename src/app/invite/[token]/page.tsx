@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -12,6 +12,7 @@ export default function InvitePage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
     if (!token) return;
@@ -31,8 +32,23 @@ export default function InvitePage() {
           return;
         }
 
-        // 2. Validate invite constraints
+        // 2. Check session
+        const { data: { session } } = await supabase.auth.getSession();
+
+        // 3. If user is not logged in: redirect to /auth with the invite path as `next`
+        if (!session || !session.user) {
+          const invitePath = `/invite/${token}`;
+          router.push(`/auth?next=${encodeURIComponent(invitePath)}`);
+          return;
+        }
+
+        // 4. Validate invite constraints
         if (invite.accepted_at || invite.accepted_by) {
+          if (invite.accepted_by === session.user.id) {
+            // They already accepted it (could be React Strict Mode double-fire, or they refreshed the page)
+            router.push("/silence");
+            return;
+          }
           setError("This invite has already been used.");
           setLoading(false);
           return;
@@ -44,22 +60,16 @@ export default function InvitePage() {
           return;
         }
 
-        // 3. Check session
-        const { data: { session } } = await supabase.auth.getSession();
-
-        // 4. If user is not logged in: redirect to /auth with the invite path as `next`
-        if (!session || !session.user) {
-          const invitePath = `/invite/${token}`;
-          router.push(`/auth?next=${encodeURIComponent(invitePath)}`);
-          return;
-        }
-
         // 5. If same person: error
         if (invite.inviter_id === session.user.id) {
           setError("You can't accept your own invite.");
           setLoading(false);
           return;
         }
+
+        // Prevent double-firing in Strict Mode using a ref
+        if (hasProcessed.current) return;
+        hasProcessed.current = true;
 
         // 6. Valid user, accept invite via API
         const res = await fetch("/api/invite/accept", {

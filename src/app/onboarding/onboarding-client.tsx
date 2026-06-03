@@ -169,7 +169,7 @@ export function OnboardingClient({ initialStep, initialDisplayName }: Onboarding
         <div className="w-full flex flex-col gap-6">
           <h2 className="text-2xl text-[#f5f0e8] tracking-wider font-light">Name your presence</h2>
           <p className="text-[#8a8470] text-sm leading-relaxed font-light">
-            What should your partner see when you're here?
+            What should your partner see when you&apos;re here?
           </p>
           <input
             type="text"

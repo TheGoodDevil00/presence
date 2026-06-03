@@ -20,6 +20,7 @@ export async function middleware(request: NextRequest) {
     url.pathname.startsWith("/invite/");
 
   if (isProtectedRoute && !user) {
+    url.searchParams.set("next", url.pathname);
     url.pathname = "/auth";
     return NextResponse.redirect(url);
   }

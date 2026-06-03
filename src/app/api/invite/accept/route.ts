@@ -50,6 +50,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "You can't accept your own invite." }, { status: 400 });
   }
 
+  // Ensure the user has a profile, otherwise the pair insert will fail a foreign key constraint
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) {
+    const defaultName = user.email ? user.email.split('@')[0] : "Partner";
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .insert({ id: user.id, display_name: defaultName });
+
+    if (profileError) {
+      console.error("profileInsertError", profileError);
+      return NextResponse.json({ error: "Failed to create default profile", details: profileError }, { status: 500 });
+    }
+  }
+
   // 1. Update invite status to accepted
   const { error: inviteUpdateError } = await supabase
     .from("invites")
@@ -60,7 +79,8 @@ export async function POST(request: Request) {
     .eq("id", invite.id);
 
   if (inviteUpdateError) {
-    return NextResponse.json({ error: "Failed to update invite" }, { status: 500 });
+    console.error("inviteUpdateError", inviteUpdateError);
+    return NextResponse.json({ error: "Failed to update invite", details: inviteUpdateError }, { status: 500 });
   }
 
   // 2. Create pair row (with canonical sorting user_a < user_b)
@@ -73,6 +93,7 @@ export async function POST(request: Request) {
     });
 
   if (pairInsertError) {
+    console.error("pairInsertError", pairInsertError);
     // Rollback invite acceptance if pair creation fails
     await supabase
       .from("invites")
@@ -82,7 +103,7 @@ export async function POST(request: Request) {
       })
       .eq("id", invite.id);
 
-    return NextResponse.json({ error: "Failed to create pair connection" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create pair connection", details: pairInsertError }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

@@ -61,3 +61,10 @@ create policy "invites_insert" on invites for insert with check (
   auth.uid() = inviter_id
 );
 create policy "invites_update_accept" on invites for update using (true);
+create policy "invites_delete" on invites for delete using (
+  auth.uid() = inviter_id
+);
+
+create policy "pairs_delete" on pairs for delete using (
+  auth.uid() = user_a or auth.uid() = user_b
+);

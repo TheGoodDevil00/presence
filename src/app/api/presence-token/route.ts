@@ -28,5 +28,5 @@ export async function GET() {
     .update(`${user.id}:${roomId}`)
     .digest("hex");
 
-  return NextResponse.json({ token, roomId, userId: user.id });
+  return NextResponse.json({ token, roomId, userId: user.id, pairId: pair.id });
 }
